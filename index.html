@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แบบสอบถามสุขภาพ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for better aesthetics and accessibility */
+        .form-group label {
+            font-weight: 500;
+            color: #1f2937; /* A darker gray for better readability */
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .input-field {
+            padding: 10px 12px;
+            font-size: 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .input-field:focus {
+            border-color: #3b82f6; /* A clear blue focus color */
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+        }
+
+        .btn-submit {
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        
+        .btn-submit:hover {
+            background-color: #16a34a; /* A slightly darker green on hover */
+        }
+        
+        .btn-submit:active {
+            transform: scale(0.99);
+        }
+
+        .modal-container {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+<form id="healthForm" class="bg-white p-8 rounded-lg shadow-xl space-y-6 w-full max-w-lg">
+    <h2 class="text-2xl font-bold text-gray-800 text-center">แบบสอบถามสุขภาพ</h2>
+
+    <div class="form-group">
+        <label for="age">อายุ (ปี):</label>
+        <input type="number" id="age" class="w-full input-field" min="15" max="60" placeholder="15-60">
+        <span id="errorAge" class="text-red-500 text-sm mt-1 block"></span>
+    </div>
+
+    <div class="form-group">
+        <label>เพศ:</label>
+        <div class="flex gap-6">
+            <label class="inline-flex items-center"><input type="radio" name="gender" value="ชาย" class="form-radio text-green-600"> <span class="ml-2">ชาย</span></label>
+            <label class="inline-flex items-center"><input type="radio" name="gender" value="หญิง" class="form-radio text-green-600"> <span class="ml-2">หญิง</span></label>
+        </div>
+        <span id="errorGender" class="text-red-500 text-sm mt-1 block"></span>
+    </div>
+
+    <div class="form-group">
+        <label for="weight">น้ำหนัก (กก.):</label>
+        <input type="number" id="weight" class="w-full input-field" placeholder="ตัวอย่าง: 65.5">
+        <span id="errorWeight" class="text-red-500 text-sm mt-1 block"></span>
+    </div>
+
+    <div class="form-group">
+        <label for="height">ส่วนสูง (ซม.):</label>
+        <input type="number" id="height" class="w-full input-field" placeholder="ตัวอย่าง: 170">
+        <span id="errorHeight" class="text-red-500 text-sm mt-1 block"></span>
+    </div>
+
+    <div class="flex items-center">
+        <input type="checkbox" id="hasDisease" class="form-checkbox text-green-600 h-5 w-5">
+        <label for="hasDisease" class="ml-2 mb-0">มีโรคประจำตัว</label>
+    </div>
+
+    <div id="diseaseDetailDiv" class="hidden form-group">
+        <label for="diseaseDetail">รายละเอียดโรค:</label>
+        <textarea id="diseaseDetail" class="w-full input-field" rows="3" placeholder="ระบุโรคประจำตัว เช่น เบาหวาน, ความดันโลหิตสูง"></textarea>
+        <span id="errorDiseaseDetail" class="text-red-500 text-sm mt-1 block"></span>
+    </div>
+
+    <button type="submit" id="submitButton" class="w-full bg-green-600 text-white p-3 rounded-lg font-semibold btn-submit">ส่งแบบสอบถาม</button>
+</form>
+
+<div id="resultModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center modal-container">
+    <div class="bg-white p-8 rounded-lg shadow-xl text-center max-w-sm w-full">
+        <h3 class="text-2xl font-bold mb-4 text-green-600">ผลการประเมิน</h3>
+        <p id="modalMessage" class="mb-4 text-lg text-gray-700"></p>
+        <button id="closeModal" class="bg-green-600 text-white px-6 py-2 rounded-lg font-semibold">ปิด</button>
+    </div>
+</div>
+
+<script>
+    const hasDiseaseCheckbox = document.getElementById("hasDisease");
+    const diseaseDetailDiv = document.getElementById("diseaseDetailDiv");
+    const form = document.getElementById("healthForm");
+    const submitButton = document.getElementById("submitButton");
+    const resultModal = document.getElementById("resultModal");
+    const modalMessage = document.getElementById("modalMessage");
+    const closeModalButton = document.getElementById("closeModal");
+
+    // Show/hide disease details based on checkbox state
+    hasDiseaseCheckbox.addEventListener("change", () => {
+        diseaseDetailDiv.classList.toggle("hidden", !hasDiseaseCheckbox.checked);
+    });
+
+    form.addEventListener("submit", function(e) {
+        e.preventDefault();
+
+        // Disable button to prevent multiple submissions
+        submitButton.disabled = true;
+        submitButton.textContent = "กำลังประมวลผล...";
+
+        // Reset errors
+        document.querySelectorAll('span[id^="error"]').forEach(el => el.textContent = "");
+
+        let age = parseInt(document.getElementById("age").value);
+        let gender = document.querySelector('input[name="gender"]:checked');
+        let weight = parseFloat(document.getElementById("weight").value);
+        let height = parseFloat(document.getElementById("height").value);
+        let diseaseDetail = document.getElementById("diseaseDetail").value.trim();
+        let valid = true;
+
+        // Validation logic
+        if (isNaN(age) || age < 15 || age > 60) {
+            document.getElementById("errorAge").textContent = "อายุต้องอยู่ระหว่าง 15–60 ปี";
+            valid = false;
+        }
+        if (!gender) {
+            document.getElementById("errorGender").textContent = "กรุณาเลือกเพศ";
+            valid = false;
+        }
+        if (isNaN(weight) || weight <= 0) {
+            document.getElementById("errorWeight").textContent = "กรุณากรอกน้ำหนักเป็นค่าบวก";
+            valid = false;
+        }
+        if (isNaN(height) || height <= 0) {
+            document.getElementById("errorHeight").textContent = "กรุณากรอกส่วนสูงเป็นค่าบวก";
+            valid = false;
+        }
+        if (hasDiseaseCheckbox.checked && diseaseDetail === "") {
+            document.getElementById("errorDiseaseDetail").textContent = "กรุณาระบุรายละเอียดโรคประจำตัว";
+            valid = false;
+        }
+
+        if (valid) {
+            // Calculate BMI
+            const bmi = weight / ((height / 100) ** 2);
+            let category = "";
+            let categoryColor = "";
+
+            if (bmi < 18.5) {
+                category = "น้ำหนักน้อย / ผอม 😥";
+                categoryColor = "text-yellow-600";
+            } else if (bmi >= 18.5 && bmi < 25) {
+                category = "สมส่วน / ปกติ 😊";
+                categoryColor = "text-green-600";
+            } else if (bmi >= 25 && bmi < 30) {
+                category = "น้ำหนักเกิน / ท้วม 😟";
+                categoryColor = "text-orange-600";
+            } else {
+                category = "อ้วน 😩";
+                categoryColor = "text-red-600";
+            }
+
+            modalMessage.innerHTML = `<span class="block text-2xl font-bold mb-2">BMI ของคุณ: ${bmi.toFixed(2)}</span><span class="${categoryColor} font-semibold">${category}</span>`;
+            resultModal.classList.remove("hidden");
+        } else {
+            // If validation fails, re-enable the button immediately
+            submitButton.disabled = false;
+            submitButton.textContent = "ส่งแบบสอบถาม";
+        }
+    });
+
+    closeModalButton.addEventListener("click", () => {
+        resultModal.classList.add("hidden");
+        // Re-enable button after modal is closed
+        submitButton.disabled = false;
+        submitButton.textContent = "ส่งแบบสอบถาม";
+    });
+</script>
+
+</body>
+</html>
